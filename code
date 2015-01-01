@@ -1,0 +1,176 @@
+Enter file contents here
+//////////////////////////run/////////////////////////////
+
+clc;clear all;close all
+
+
+    load orl
+    fea       =   double(fea);
+
+    in        =   [1 2 3 4 5 6];    
+    index     =   [];
+    for i     =   0:max(gnd)-1
+        index =   [index in+i*9];  
+    end
+
+    train.fea   =   fea(:,index);   
+    train.gnd   =   gnd(index);
+    fea(:,index)=   [];             
+    gnd(index)  =   [];
+    test.fea    =   fea;            
+    test.gnd    =   gnd;
+    clear fea gnd i in index        
+
+
+    option.disType  =   'Manhatan';    
+
+    E=eigensurface(train,test,option);    
+    
+    /////////////////////////////////////////////// Pca////////////////////////////////
+    function [Evector Evalue]=PCA(data,dimred)
+if isempty(data)
+    sprintf('No input data')
+end
+if ~exist('dimred')
+    dimred=0;
+end
+
+[n p]=size(data);
+t=max(n,p);
+if t==n 
+    method=0;
+else 
+    method=1;
+end
+
+
+X=data-repmat(mean(data,2),1,p);
+
+
+if method
+    cov=X*X';
+    [Evec Eval]=eig(cov);
+
+elseif ~method
+    cov=X'*X;
+    [Evec Eval]=eig(cov);
+    Evec=X*Evec;
+
+else 
+    sprintf('Unknown method')
+end
+
+%----------------------------
+%dimentional Reduction
+if dimred<=0 | dimred>=min(p,t)
+    dimred=min(p,n);
+
+elseif dimred<min(p,n) & dimred>0
+    dimred=dimred;
+
+else
+    sprintf('Error Dimentionl reduction')
+
+end
+
+Eval=diag(Eval);
+[Eval i]=sort(Eval,'descend');
+Evec=Evec(:,i);%Sort the Evector By Eval descent order
+
+for i = 1 : size(Evec,2)
+    Evec(:, i) =Evec(:,i) / norm(Evec(:, i));
+end
+
+Evector=Evec(:,1:dimred);
+Evalue=Eval(1:dimred,1);
+/////////////////////////////////////////////////// Eigensurface ////////////////////////
+function Eigen=Eigensurface(train,test,option)
+    counter=0;tic
+    if ~exist('option')
+        option.disType='Manhatan';
+    end
+
+    Eigen.mean=mean(train.fea')';
+    Eigen.train=train.fea-repmat(Eigen.mean,1,size(train.fea,2));
+    Eigen.test =test.fea -repmat(Eigen.mean,1,size(test.fea ,2));
+    
+
+    [Eigen.vector Eigen.value]=PCA(Eigen.train,0);
+
+
+    Eigen.XP =Eigen.vector'*Eigen.train;
+    Eigen.XPT=Eigen.vector'*Eigen.test ;
+    
+
+    step=round(size(Eigen.XP,1)/20); 
+    Eigen.usedeigen=[];
+    for i=15*step:step:size(Eigen.XP)
+    if i>size(Eigen.XP,1) 
+        i=size(Eigen.XP);
+    end
+    Eigen.usedeigen=[Eigen.usedeigen i];   
+    
+
+    xp =Eigen.XP (1:i,:);
+    xpt=Eigen.XPT(1:i,:);
+    
+
+    [RecRate RecImages IdenIndex]=evaluation(xp,xpt,train.gnd,test.gnd,option);
+    counter=counter+1;
+    Eigen.RecRate(counter)=RecRate;
+    
+
+    Eigen.WrongRecognized(counter,:) =~RecImages.*IdenIndex;
+    end
+    
+
+    [Eigen.MaxRecRate maxindex]=max(Eigen.RecRate);
+    Eigen.MaxRecRatevec=Eigen.usedeigen(maxindex);
+    
+
+    figure;plot(Eigen.usedeigen,Eigen.RecRate);
+    xlabel('Number of Eigen Vectors');
+    ylabel('Recognition Rate');
+   
+   ///////////////////////////////////////////////////////// Evaluation////////////////////////////
+   function [RecRate r IdentifiedIndex]=Evaluation(train,test,traingnd,testgnd,option)
+if ~exist('option')
+    option.disType='Manhatan';
+    option.norm=0;
+end
+
+for i=1:size(test,2)
+
+    t=repmat(test(:,i),1,size(train,2))-train;
+
+
+    dis=similarity(t,option);
+
+    [b a]=min(dis);
+
+    if traingnd(a)==testgnd(i)
+        r(i)=1;     
+    else
+        r(i)=0;    
+    end
+    IdentifiedIndex(i)=traingnd(a); 
+    
+end
+
+
+    RecRate=sum(r)/size(test,2)*100;
+    /////////////////////////////////////////////////////////// similarity ///////////////////////////
+    function dis=similarity(data,option)
+if ~exist('option')
+    option.disType='Manhatan';
+end
+
+switch lower(option.disType)
+    case    lower('Manhatan')
+        dis=sum(abs(data));
+    
+    case    lower('Euclidian')
+        dis=data.^2;
+        dis=sum(dis);
+end
+    
