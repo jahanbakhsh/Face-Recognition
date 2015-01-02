@@ -10,7 +10,7 @@ clc;clear all;close all
     in        =   [1 2 3 4 5 6];    
     index     =   [];
     for i     =   0:max(gnd)-1
-        index =   [index in+i*9];  
+        index =   [index in+i*10];  
     end
 
     train.fea   =   fea(:,index);   
