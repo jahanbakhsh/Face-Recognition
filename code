@@ -1,5 +1,6 @@
 Enter file contents here
-//////////////////////////run/////////////////////////////
+
+ ////////////////////////////// run //////////////////////
 
 clc;clear all;close all
 
@@ -26,8 +27,9 @@ clc;clear all;close all
 
     E=eigensurface(train,test,option);    
     
-    /////////////////////////////////////////////// Pca////////////////////////////////
-    function [Evector Evalue]=PCA(data,dimred)
+    
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ pca \\\\\\\\\\\\\\\\\\\\\\\\\\\
+function [Evector Evalue]=PCA(data,dimred)
 if isempty(data)
     sprintf('No input data')
 end
@@ -83,7 +85,51 @@ end
 
 Evector=Evec(:,1:dimred);
 Evalue=Eval(1:dimred,1);
-/////////////////////////////////////////////////// Eigensurface ////////////////////////
+
+////////////////////////////////////////// Evaluation///////////////////////////
+function [RecRate r IdentifiedIndex]=Evaluation(train,test,traingnd,testgnd,option)
+if ~exist('option')
+    option.disType='Manhatan';
+    option.norm=0;
+end
+
+for i=1:size(test,2)
+
+    t=repmat(test(:,i),1,size(train,2))-train;
+
+
+    dis=similarity(t,option);
+
+    [b a]=min(dis);
+
+    if traingnd(a)==testgnd(i)
+        r(i)=1;     
+    else
+        r(i)=0;    
+    end
+    IdentifiedIndex(i)=traingnd(a); 
+    
+end
+
+
+    RecRate=sum(r)/size(test,2)*100;
+
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ similarity \\\\\\\\\\\\\\\\\\\\\\\\\\
+function dis=similarity(data,option)
+if ~exist('option')
+    option.disType='Manhatan';
+end
+
+switch lower(option.disType)
+    case    lower('Manhatan')
+        dis=sum(abs(data));
+    
+    case    lower('Euclidian')
+        dis=data.^2;
+        dis=sum(dis);
+end
+
+///////////////////////////////////////////  Eigensurface /////////////////////
 function Eigen=Eigensurface(train,test,option)
     counter=0;tic
     if ~exist('option')
@@ -132,45 +178,4 @@ function Eigen=Eigensurface(train,test,option)
     xlabel('Number of Eigen Vectors');
     ylabel('Recognition Rate');
    
-   ///////////////////////////////////////////////////////// Evaluation////////////////////////////
-   function [RecRate r IdentifiedIndex]=Evaluation(train,test,traingnd,testgnd,option)
-if ~exist('option')
-    option.disType='Manhatan';
-    option.norm=0;
-end
-
-for i=1:size(test,2)
-
-    t=repmat(test(:,i),1,size(train,2))-train;
-
-
-    dis=similarity(t,option);
-
-    [b a]=min(dis);
-
-    if traingnd(a)==testgnd(i)
-        r(i)=1;     
-    else
-        r(i)=0;    
-    end
-    IdentifiedIndex(i)=traingnd(a); 
-    
-end
-
-
-    RecRate=sum(r)/size(test,2)*100;
-    /////////////////////////////////////////////////////////// similarity ///////////////////////////
-    function dis=similarity(data,option)
-if ~exist('option')
-    option.disType='Manhatan';
-end
-
-switch lower(option.disType)
-    case    lower('Manhatan')
-        dis=sum(abs(data));
-    
-    case    lower('Euclidian')
-        dis=data.^2;
-        dis=sum(dis);
-end
-    
+   
